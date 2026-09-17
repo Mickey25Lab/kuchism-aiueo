@@ -1,0 +1,30 @@
+# Local browser profiles and verification output
+/.browser-check/
+/browser-check/
+/.browser-check*/
+/browser-check*/
+/test-results/
+/playwright-report/
+/screenshots/
+/coverage/
+/tmp/
+/temp/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.dmp
+
+# Local dependencies, configuration and operating-system files
+/node_modules/
+/.env
+/.env.*
+/.vscode/
+/.idea/
+/.codex/
+/.agents/
+.DS_Store
+Thumbs.db
+Desktop.ini

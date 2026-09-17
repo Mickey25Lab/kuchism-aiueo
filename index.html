@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>クチズムあいうえお</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <main id="app">
+    <section id="start" class="screen artwork start" aria-label="クチズムあいうえお ひらがな おぼえたかな？">
+      <h1 class="sr-only">クチズムあいうえお</h1>
+      <p class="sr-only">ひらがな おぼえたかな？</p>
+      <button id="start-button" class="primary">はじめる</button>
+    </section>
+    <section id="question" class="screen question" aria-label="ひらがな" hidden>
+      <header><p id="progress" aria-live="polite"></p><progress id="progress-bar" max="20" value="0" aria-label="すすみぐあい"></progress></header>
+      <div class="question-content">
+        <p id="character"></p>
+        <img id="review-image" hidden alt="">
+        <p id="feedback" class="sr-only" aria-live="polite"></p>
+      </div>
+      <div class="answers">
+        <button class="answer correct" data-result="correct"><span class="face smile" aria-hidden="true"><i></i></span><span>できた</span></button>
+        <button class="answer unsure" data-result="unsure"><span class="face neutral" aria-hidden="true"><i></i></span><span>どうかな</span></button>
+        <button class="answer incorrect" data-result="incorrect"><span class="face sad" aria-hidden="true"><i></i></span><span>できなかった</span></button>
+      </div>
+    </section>
+    <section id="result" class="screen artwork result" aria-label="20もん おわったよ！" hidden>
+      <h2 class="sr-only">20もん おわったよ！</h2>
+      <dl class="counts">
+        <div><dt class="sr-only">できた</dt><dd id="count-correct">0</dd></div>
+        <div><dt class="sr-only">どうかな</dt><dd id="count-unsure">0</dd></div>
+        <div><dt class="sr-only">できなかった</dt><dd id="count-incorrect">0</dd></div>
+      </dl>
+      <p class="sr-only">さいごまで できたね！</p>
+      <button id="restart-button" class="primary">もういっかい</button>
+    </section>
+  </main>
+</body>
+</html>
