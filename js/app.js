@@ -31,7 +31,7 @@ function startSession() {
   answers = [];
   currentIndex = 0;
   busy = false;
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  initializeSpeech();
   // Preload selected review images without changing the supplied assets.
   questions.forEach(item => { const image = new Image(); image.src = item.image; });
   showScreen('question');
@@ -78,39 +78,79 @@ function selectJapaneseVoice(voices) {
     || japanese.find(voice => voice.default) || japanese[0];
 }
 
-function speak(text) {
+let cachedVoice;
+let speechInitialized = false;
+let cancelPending = false;
+
+function cancelSpeech() {
+  cancelPending = true;
+  try { window.speechSynthesis.cancel(); }
+  catch { console.warn('読み上げを利用できません。'); }
+}
+
+function initializeSpeech() {
+  if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+  const synthesis = window.speechSynthesis;
+  const cacheVoice = () => {
+    try { cachedVoice = selectJapaneseVoice(synthesis.getVoices()); }
+    catch { console.warn('読み上げを利用できません。'); }
+  };
+  cacheVoice();
+  if (speechInitialized) return;
+  speechInitialized = true;
+  synthesis.addEventListener?.('voiceschanged', cacheVoice);
+  // Unlock speech synchronously inside the first start-button gesture.
+  const warmup = new SpeechSynthesisUtterance('');
+  warmup.lang = 'ja-JP';
+  warmup.volume = 0;
+  if (cachedVoice) warmup.voice = cachedVoice;
+  try {
+    synthesis.resume?.();
+    synthesis.speak(warmup);
+  } catch { console.warn('読み上げを利用できません。'); }
+}
+
+async function speak(text) {
+  if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+    console.warn('読み上げを利用できません。');
+    return;
+  }
+  const synthesis = window.speechSynthesis;
+  if (synthesis.speaking || synthesis.pending) cancelSpeech();
+  if (cancelPending) {
+    await wait(150);
+    cancelPending = false;
+  }
   return new Promise(resolve => {
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      console.warn('このブラウザでは読み上げを利用できません。');
-      resolve();
-      return;
-    }
-    const synthesis = window.speechSynthesis;
-    synthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ja-JP';
-    const voice = selectJapaneseVoice(synthesis.getVoices());
-    if (voice) utterance.voice = voice;
+    if (cachedVoice) utterance.voice = cachedVoice;
     utterance.pitch = 1.1;
     utterance.rate = 0.95;
     let timer;
     let finished = false;
-    const finish = () => {
+    const finish = (failed = false) => {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
-      utterance.onend = utterance.onerror = null;
+      utterance.onstart = utterance.onend = utterance.onerror = null;
+      if (failed) {
+        console.warn('読み上げを利用できません。');
+        cancelSpeech();
+      }
       resolve();
     };
-    utterance.onend = finish;
-    utterance.onerror = () => { console.warn('読み上げを利用できません。'); synthesis.cancel(); finish(); };
-    timer = setTimeout(() => {
-      console.warn('読み上げが応答しないため、画面表示を続けます。');
-      synthesis.cancel();
-      finish();
-    }, 20000);
+    utterance.onstart = () => {
+      if (finished) return;
+      clearTimeout(timer);
+      // Bound the wait when a browser never reports completion, too.
+      timer = setTimeout(() => finish(true), 8000);
+    };
+    utterance.onend = () => finish();
+    utterance.onerror = () => finish(true);
+    timer = setTimeout(() => finish(true), 2000);
     try { synthesis.speak(utterance); }
-    catch { console.warn('読み上げを利用できません。'); finish(); }
+    catch { finish(true); }
   });
 }
 
@@ -126,16 +166,10 @@ async function answer(result) {
   reviewImage.alt = item.phrase;
   reviewImage.hidden = false;
   document.getElementById('feedback').textContent = item.phrase;
-  if (item.character === 'は') {
-    // Keep the confirmed phrase intact in data and UI. Isolate the final
-    // character and use katakana for speech so it cannot become a particle.
-    await speak(item.phrase.slice(0, -1));
-    await speak('ハ');
-  } else {
-    await speak(item.phrase);
-  }
   const repeat = result === 'unsure' || result === 'incorrect';
-  if (repeat) await speak('どうぞ');
+  // Use katakana to prevent the final character from becoming a particle.
+  const phrase = item.character === 'は' ? item.phrase.slice(0, -1) + ' ハ' : item.phrase;
+  await speak(repeat ? phrase + '。せーの' : phrase);
   await wait(repeat ? 2500 : 1000);
   currentIndex += 1;
   if (currentIndex < questions.length) showQuestion();
